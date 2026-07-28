@@ -41,6 +41,12 @@ For all functionality of the RecFind 6 Search Power App to be available, you wil
 
 `SendFile` Submit file contents and metadata for storage in the RecFind 6 database. Returns a URL to the stored file.
 
+### Creating a Connection
+A connection requires two settings:
+
+* `Host Name` - the host name of your RecFind 6 Connector server, without a scheme, e.g. `recfind.contoso.com`. The connector always calls this host over HTTPS. The host is fixed for the lifetime of the connection and can no longer be supplied per operation via a `HostUrl` query parameter.
+* `Security Key` - the Security Key of that server, see below.
+
 ### Obtaining Credentials
 Pass the security key in a header named `SecurityKey`.   
 Connections to the RecFind 6 Connector require a Security Key to successfully connect. It is critical that this key is changed after installation and kept secure. The Security Key should only be shared with people who require it.

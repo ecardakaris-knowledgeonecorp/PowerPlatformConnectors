@@ -1,6 +1,19 @@
 {
   "properties": {
     "connectionParameters": {
+      "HostUrl": {
+        "type": "string",
+        "uiDefinition": {
+          "displayName": "Host Name",
+          "description": "Host name of your RecFind 6 Connector server, without a scheme, e.g. recfind.contoso.com. The connector always calls it over HTTPS.",
+          "tooltip": "Provide the host name of your RecFind 6 Connector server",
+          "constraints": {
+            "tabIndex": 1,
+            "clearText": true,
+            "required": "true"
+          }
+        }
+      },
       "api_key": {
         "type": "securestring",
         "uiDefinition": {
@@ -22,7 +35,7 @@
         "templateId": "dynamichosturl",
         "title": "HostUrl",
         "parameters": {
-          "x-ms-apimTemplateParameter.urlTemplate": "@queryParameters('HostUrl')"
+          "x-ms-apimTemplateParameter.urlTemplate": "https://@connectionParameters('HostUrl')"
         }
       }
     ],
