@@ -59,18 +59,11 @@
         "operationId": "QueryList",
         "parameters": [
           {
-            "name": "HostUrl",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "x-ms-summary": "Host URL",
-            "description": "URL of the server"
-          },
-          {
             "name": "UserName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "x-ms-summary": "User Name",
             "description": "User making the request"
           }
@@ -98,26 +91,20 @@
         "x-ms-visibility": "important",
         "parameters": [
           {
-            "name": "HostUrl",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "x-ms-summary": "Host URL",
-            "description": "URL of the server"
-          },
-          {
             "name": "UserName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "x-ms-summary": "User Name",
             "description": "User making the request"
           },
           {
             "name": "QueryName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "description": "Query Name",
             "x-ms-summary": "Name of the predefined query"
           },
@@ -126,6 +113,7 @@
             "in": "query",
             "required": false,
             "type": "string",
+            "maxLength": 2048,
             "description": "Search Text",
             "x-ms-summary": "Text to filter the search results"
           }
@@ -201,26 +189,20 @@
         "x-ms-visibility": "important",
         "parameters": [
           {
-            "name": "HostUrl",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "x-ms-summary": "Host URL",
-            "description": "URL of the server"
-          },
-          {
             "name": "UserName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "x-ms-summary": "User Name",
             "description": "User making the request"
           },
           {
             "name": "QueryName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "description": "Query Name",
             "x-ms-summary": "Name of the predefined query"
           },
@@ -229,6 +211,8 @@
             "in": "query",
             "required": false,
             "type": "integer",
+            "minimum": 0,
+            "default": 0,
             "description": "Start position",
             "x-ms-summary": "Number of search results to skip"
           },
@@ -237,6 +221,8 @@
             "in": "query",
             "required": false,
             "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
             "description": "Number of records",
             "x-ms-summary": "Number of records to return"
           },
@@ -245,6 +231,7 @@
             "in": "query",
             "required": false,
             "type": "string",
+            "maxLength": 2048,
             "description": "Search Text",
             "x-ms-summary": "Text to filter the search results"
           }
@@ -271,26 +258,20 @@
         "x-ms-visibility": "important",
         "parameters": [
           {
-            "name": "HostUrl",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "x-ms-summary": "Host URL",
-            "description": "URL of the server"
-          },
-          {
             "name": "UserName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "x-ms-summary": "User Name",
             "description": "User making the request"
           },
           {
             "name": "SavedSearchName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "description": "Saved Search Name",
             "x-ms-summary": "Name of the saved search"
           },
@@ -299,6 +280,7 @@
             "in": "query",
             "required": false,
             "type": "string",
+            "maxLength": 2048,
             "description": "Saved Search Parameters",
             "x-ms-summary": "Parameters to pass to the saved search"
           }
@@ -331,27 +313,24 @@
         "x-ms-visibility": "important",
         "parameters": [
           {
-            "name": "HostUrl",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "x-ms-summary": "Host URL",
-            "description": "URL of the server"
-          },
-          {
             "name": "UserName",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
+            "maxLength": 256,
             "x-ms-summary": "User Name",
             "description": "User making the request"
           },
           {
             "name": "body",
             "in": "body",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "object",
+              "required": [
+                "FileContents",
+                "FileName"
+              ],
               "properties": {
                 "FileContents": {
                   "type": "string",
@@ -359,6 +338,7 @@
                 },
                 "FileName": {
                   "type": "string",
+                  "maxLength": 260,
                   "description": "File Name"
                 },
                 "Title": {
