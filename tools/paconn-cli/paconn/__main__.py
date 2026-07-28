@@ -67,6 +67,7 @@ def main():
         exit_code = cli_context.invoke(sys.argv[1:])
         sys.exit(exit_code)
     except KeyboardInterrupt:
+        print('Operation cancelled by the user.', file=sys.stderr)
         sys.exit(1)
 
 

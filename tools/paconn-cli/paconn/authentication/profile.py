@@ -9,6 +9,7 @@ User profile management class.`
 """
 import adal
 from urllib.parse import urljoin
+from knack.util import CLIError
 # AADTokenCredentials for multi-factor authentication
 from msrestazure.azure_active_directory import AADTokenCredentials
 
@@ -37,16 +38,19 @@ class Profile:
         """
         context = self._get_authentication_context()
 
-        code = context.acquire_user_code(
-            resource=self.resource,
-            client_id=self.client_id)
+        try:
+            code = context.acquire_user_code(
+                resource=self.resource,
+                client_id=self.client_id)
 
-        print(code['message'])
+            print(code['message'])
 
-        mgmt_token = context.acquire_token_with_device_code(
-            resource=self.resource,
-            user_code_info=code,
-            client_id=self.client_id)
+            mgmt_token = context.acquire_token_with_device_code(
+                resource=self.resource,
+                user_code_info=code,
+                client_id=self.client_id)
+        except adal.AdalError as exception:
+            raise CLIError('Device code authentication failed. (Inner Error: {})'.format(exception)) from exception
 
         credentials = AADTokenCredentials(
             token=mgmt_token,

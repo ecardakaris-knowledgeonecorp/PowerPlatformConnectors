@@ -10,13 +10,18 @@ Uploads an file for the custom connector
 import os
 import mimetypes
 from urllib.parse import urlparse, urlunparse
+from azure.common import AzureException
 from azure.storage.blob import ContentSettings, BlockBlobService
+from knack.util import CLIError
 
 
 def upload_file(sas_url, file_path):
     # Break the SAS URL
     (scheme, netloc, path, params, query, fragment) = urlparse(sas_url)
     # Account is the first part of the netlocation upto the dot
+    if '.' not in netloc:
+        raise CLIError('The shared access signature URL returned by the service is not a blob URL: {}.'.format(
+            sas_url))
     account_name = netloc[0:netloc.index('.')]
 
     # The assumption here is that the blob URL will be in the
@@ -44,11 +49,16 @@ def upload_file(sas_url, file_path):
         content_encoding=content_encoding)
 
     # Upload the file
-    blockblob_service.create_blob_from_path(
-        container_name=container_name,
-        blob_name=file_name,
-        file_path=file_path,
-        content_settings=content_settings)
+    try:
+        blockblob_service.create_blob_from_path(
+            container_name=container_name,
+            blob_name=file_name,
+            file_path=file_path,
+            content_settings=content_settings)
+    except (AzureException, OSError) as exception:
+        raise CLIError('Couldn\'t upload the file {file}. (Inner Error: {error})'.format(
+            file=file_path,
+            error=exception)) from exception
 
     # Append the file name to the path to generate the download link
     path = path + '/' + file_name

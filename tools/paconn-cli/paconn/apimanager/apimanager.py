@@ -25,6 +25,18 @@ from paconn.authentication.tokenmanager import (
 LOGGER = get_logger(__name__)
 
 
+def _format_response_content(response):
+    """
+    Returns the response body formatted as JSON when possible,
+    the raw body otherwise. Error responses aren't always JSON,
+    e.g. an HTML error page returned by a proxy or a gateway.
+    """
+    try:
+        return format_json(json.loads(response.content))
+    except (ValueError, TypeError):
+        return response.text
+
+
 class APIManager:
     """
     A manager class for API calls
@@ -50,6 +62,9 @@ class APIManager:
         """
         Add object id to a given api endpoint
         """
+        if not self.credentials:
+            raise CLIError('No credentials are available. Please login again.')
+
         object_id = self.credentials.get(_OID, '')
         path = 'objectIds/{object_id}/{api}'.format(
             object_id=object_id,
@@ -87,39 +102,59 @@ class APIManager:
 
         return endpoint
 
+    def _get_authorization_header(self):
+        """
+        Returns the authorization header for the current credentials
+        """
+        if not self.credentials:
+            return {}
+
+        try:
+            token_type = self.credentials[_TOKEN_TYPE]
+            token = self.credentials[_ACCESS_TOKEN]
+        except (KeyError, TypeError) as exception:
+            raise CLIError(
+                'The saved credentials are incomplete or corrupted. '
+                'Please login again. (Inner Error: {})'.format(exception)) from exception
+
+        return {
+            'Authorization': '{token_type} {token}'.format(
+                token_type=token_type,
+                token=token)
+        }
+
     def request(self, verb, endpoint, headers=None, payload=None):
         """
         Send a request to the given url
         """
-        all_headers = {}
-        if self.credentials:
-            token_type = self.credentials[_TOKEN_TYPE]
-            token = self.credentials[_ACCESS_TOKEN]
-            all_headers = {
-                'Authorization': '{token_type} {token}'.format(
-                    token_type=token_type,
-                    token=token)
-            }
+        all_headers = self._get_authorization_header()
         if headers:
             all_headers.update(headers)
 
-        response = requests.request(
-            verb,
-            endpoint,
-            headers=all_headers,
-            json=payload)
+        try:
+            response = requests.request(
+                verb,
+                endpoint,
+                headers=all_headers,
+                json=payload)
+        except requests.exceptions.RequestException as exception:
+            raise CLIError('{verb} {endpoint} failed. (Inner Error: {error})'.format(
+                verb=verb,
+                endpoint=endpoint,
+                error=exception)) from exception
+
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as exception:
             exception_str = str(exception)
-            response_content = json.loads(response.content)
-            response_content = format_json(response_content)
+            response_content = _format_response_content(response)
             if payload:
                 LOGGER.debug('PAYLOAD')
                 LOGGER.debug(payload)
             LOGGER.debug('RESPONSE')
             LOGGER.debug(response_content)
-            display(response_content)
-            raise CLIError(exception_str)
+            if response_content:
+                display(response_content)
+            raise CLIError(exception_str) from exception
 
         return response

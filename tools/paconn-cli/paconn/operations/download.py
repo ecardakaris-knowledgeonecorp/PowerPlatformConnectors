@@ -14,7 +14,7 @@ import requests
 from knack.util import CLIError
 from knack.prompting import prompt_y_n
 
-from paconn.common.util import format_json
+from paconn.common.util import format_json, write_file
 from paconn.settings.util import write_settings, SETTINGS_FILE
 
 from paconn.operations.json_keys import (
@@ -39,23 +39,27 @@ def _prepare_directory(destination, connector_id):
     Create directory for saving a connector.
     """
 
-    # Use the destination directory when provided
-    if destination:
-        if not os.path.exists(destination):
-            # Create all sub-directories
-            os.makedirs(destination)
-    # Create a sub-directory in the current directory
-    # when a destination isn't provided
-    else:
-        if not os.path.isdir(connector_id):
-            os.mkdir(connector_id)
-        destination = connector_id
+    try:
+        # Use the destination directory when provided
+        if destination:
+            if not os.path.exists(destination):
+                # Create all sub-directories
+                os.makedirs(destination)
+        # Create a sub-directory in the current directory
+        # when a destination isn't provided
+        else:
+            if not os.path.isdir(connector_id):
+                os.mkdir(connector_id)
+            destination = connector_id
 
-    if os.path.isdir(destination):
-        os.chdir(destination)
-    else:
-        error = 'Couldn\'t download to the desination directory {}.'
-        raise CLIError(error.format(destination))
+        if os.path.isdir(destination):
+            os.chdir(destination)
+        else:
+            error = 'Couldn\'t download to the desination directory {}.'
+            raise CLIError(error.format(destination))
+    except OSError as exception:
+        error = 'Couldn\'t download to the desination directory {destination}. (Inner Error: {error})'
+        raise CLIError(error.format(destination=destination, error=exception)) from exception
 
     return os.getcwd()
 
@@ -74,6 +78,22 @@ def _ensure_overwrite(settings):
             raise CLIError('{} files not overwritten.'.format(existing_files))
 
     return overwrite
+
+
+def _download_content(url, content_type):
+    """
+    Download the content of a given URL.
+    """
+    try:
+        response = requests.get(url, allow_redirects=True)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exception:
+        raise CLIError('Couldn\'t download the {content_type} from {url}. (Inner Error: {error})'.format(
+            content_type=content_type,
+            url=url,
+            error=exception)) from exception
+
+    return response
 
 
 def download(powerapps_rp, settings, destination, overwrite):
@@ -127,46 +147,55 @@ def download(powerapps_rp, settings, destination, overwrite):
         content=api_properties_selected,
         sort_keys=False)
 
-    open(
-        file=settings.api_properties,
-        mode='w'
-        ).write(api_prop)
+    write_file(
+        filename=settings.api_properties,
+        mode='w',
+        content=api_prop)
 
     # Write the open api definition,
     # either from swagger URL when available or from swagger property.
     if _API_DEFINITIONS in api_properties and _ORIGINAL_SWAGGER_URL in api_properties[_API_DEFINITIONS]:
         original_swagger_url = api_properties[_API_DEFINITIONS][_ORIGINAL_SWAGGER_URL]
-        response = requests.get(original_swagger_url, allow_redirects=True)
+        response = _download_content(url=original_swagger_url, content_type='API definition')
         response_string = response.content.decode('utf-8-sig')
 
+        try:
+            swagger_content = json.loads(response_string)
+        except ValueError as exception:
+            raise CLIError(
+                'The API definition downloaded from {url} is not a valid JSON document. '
+                '(Inner Error: {error})'.format(
+                    url=original_swagger_url,
+                    error=exception)) from exception
+
         swagger = format_json(
-            content=json.loads(response_string),
+            content=swagger_content,
             sort_keys=False)
 
-        open(
-            file=settings.api_definition,
-            mode='w'
-            ).write(swagger)
+        write_file(
+            filename=settings.api_definition,
+            mode='w',
+            content=swagger)
 
     # Write the icon
     if _ICON_URI in api_properties:
         icon_url = api_properties[_ICON_URI]
-        response = requests.get(icon_url, allow_redirects=True)
+        response = _download_content(url=icon_url, content_type='icon')
 
-        open(
-            file=settings.icon,
-            mode='wb'
-            ).write(response.content)
+        write_file(
+            filename=settings.icon,
+            mode='wb',
+            content=response.content)
 
     # Write the script
     if _SCRIPT_URI in api_properties:
         script_url = api_properties[_SCRIPT_URI]
-        response = requests.get(script_url, allow_redirects=True)
+        response = _download_content(url=script_url, content_type='script')
 
-        open(
-            file=settings.script,
-            mode='wb'
-            ).write(response.content)
+        write_file(
+            filename=settings.script,
+            mode='wb',
+            content=response.content)
     else:
         settings.script = None
 

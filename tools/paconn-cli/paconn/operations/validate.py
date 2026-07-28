@@ -8,10 +8,20 @@
 Method for create/update operation
 """
 
-import io
-import json
+from paconn.common.util import ensure_file_exists, load_json_file
 
-from paconn.common.util import ensure_file_exists
+
+def format_validation_result(result):
+    """
+    Format a validation result returned by the service into a readable string.
+    """
+    if not result:
+        return ''
+
+    # Replace \r\n in the string to newlines
+    result = bytes(result, 'utf-8').decode('unicode-escape')
+    # Remove quotes at the beginning and end
+    return result.strip('"')
 
 
 def validate(powerapps_rp, settings):
@@ -25,17 +35,13 @@ def validate(powerapps_rp, settings):
         file_type='API Definition')
 
     # Load swagger definition
-    with io.open(settings.api_definition, 'r', encoding='utf-8-sig') as file:
-        openapi_definition = json.load(file)
+    openapi_definition = load_json_file(
+        filename=settings.api_definition,
+        file_type='API Definition')
 
     # Validate Open API Definition
     result = powerapps_rp.validate_connector(
         payload=openapi_definition,
         enable_certification_rules=True)
 
-    # Replace \r\n in the string to newlines
-    result = bytes(result, 'utf-8').decode('unicode-escape')
-    # Remove quotes at the beginning and end
-    result = result.strip('"')
-
-    return result
+    return format_validation_result(result)
