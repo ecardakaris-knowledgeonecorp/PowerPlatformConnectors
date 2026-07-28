@@ -102,24 +102,32 @@ class APIManager:
 
         return endpoint
 
+    def _get_authorization_header(self):
+        """
+        Returns the authorization header for the current credentials
+        """
+        if not self.credentials:
+            return {}
+
+        try:
+            token_type = self.credentials[_TOKEN_TYPE]
+            token = self.credentials[_ACCESS_TOKEN]
+        except (KeyError, TypeError) as exception:
+            raise CLIError(
+                'The saved credentials are incomplete or corrupted. '
+                'Please login again. (Inner Error: {})'.format(exception)) from exception
+
+        return {
+            'Authorization': '{token_type} {token}'.format(
+                token_type=token_type,
+                token=token)
+        }
+
     def request(self, verb, endpoint, headers=None, payload=None):
         """
         Send a request to the given url
         """
-        all_headers = {}
-        if self.credentials:
-            try:
-                token_type = self.credentials[_TOKEN_TYPE]
-                token = self.credentials[_ACCESS_TOKEN]
-            except (KeyError, TypeError) as exception:
-                raise CLIError(
-                    'The saved credentials are incomplete or corrupted. '
-                    'Please login again. (Inner Error: {})'.format(exception)) from exception
-            all_headers = {
-                'Authorization': '{token_type} {token}'.format(
-                    token_type=token_type,
-                    token=token)
-            }
+        all_headers = self._get_authorization_header()
         if headers:
             all_headers.update(headers)
 
