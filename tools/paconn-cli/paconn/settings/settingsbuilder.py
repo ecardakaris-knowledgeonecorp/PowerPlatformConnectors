@@ -66,25 +66,20 @@ class SettingsBuilder:
             authority_url,
             resource):
         """
-        Loads settings into a settings object.
+        Loads authentication settings into a settings object.
         """
 
-        # Load from settings file if it is available
-        if settings_file:
-            settings = SettingsSerializer.from_json(settings_file)
-        else:
-            settings = Settings(
-                connector_id=None,
-                environment=None,
-                powerapps_url=None,
-                powerapps_api_version=None,
-                api_properties=None,
-                api_definition=None,
-                icon=None,
-                script=None,
-                client_id=client_id,
-                tenant=tenant,
-                authority_url=authority_url,
-                resource=resource
-            )
-        return settings
+        return SettingsBuilder.get_settings(
+            environment=None,
+            settings_file=settings_file,
+            connector_id=None,
+            powerapps_url=None,
+            powerapps_version=None,
+            api_properties=None,
+            api_definition=None,
+            icon=None,
+            script=None,
+            client_id=client_id,
+            tenant=tenant,
+            authority_url=authority_url,
+            resource=resource)

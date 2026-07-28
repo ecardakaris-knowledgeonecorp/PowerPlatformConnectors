@@ -8,7 +8,10 @@ Utility methods.
 """
 import sys
 import os
+import io
 import json
+
+import requests
 
 from knack.util import CLIError
 from knack.prompting import prompt_y_n
@@ -41,6 +44,30 @@ def format_json(content, sort_keys=False):
     return json_string
 
 
+def write_file(filename, content, mode='w'):
+    """
+    Write the content to the given file.
+    """
+    with open(filename, mode=mode) as file:
+        file.write(content)
+
+
+def load_json_file(filename):
+    """
+    Load a json file, ignoring the byte order mark when present.
+    """
+    with io.open(filename, 'r', encoding='utf-8-sig') as file:
+        return json.load(file)
+
+
+def download_content(url):
+    """
+    Returns the content of a given url.
+    """
+    response = requests.get(url, allow_redirects=True)
+    return response.content
+
+
 def ensure_file_exists(file, file_type):
     """
     Check if the given file exists.
@@ -66,4 +93,4 @@ def write_with_prompt(filename, mode, content, overwrite):
         overwrite = ensure_overwrite(filename)
 
     if overwrite:
-        open(filename, mode=mode).write(content)
+        write_file(filename=filename, content=content, mode=mode)

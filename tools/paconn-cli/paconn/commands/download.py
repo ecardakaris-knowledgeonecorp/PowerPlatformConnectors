@@ -10,8 +10,7 @@ Download command.
 from paconn import _DOWNLOAD
 
 from paconn.common.util import display
-from paconn.settings.util import load_powerapps_and_flow_rp
-from paconn.settings.settingsbuilder import SettingsBuilder
+from paconn.settings.util import load_settings_and_powerapps_rp
 
 import paconn.operations.download
 
@@ -28,21 +27,14 @@ def download(
     """
     Download command.
     """
-    # Get settings
-    settings = SettingsBuilder.get_settings(
+    # Get settings and the powerapps rp
+    settings, powerapps_rp = load_settings_and_powerapps_rp(
+        command_context=_DOWNLOAD,
         environment=environment,
         settings_file=settings_file,
-        api_properties=None,
-        api_definition=None,
-        icon=None,
-        script=None,
         connector_id=connector_id,
         powerapps_url=powerapps_url,
         powerapps_version=powerapps_version)
-
-    powerapps_rp, _ = load_powerapps_and_flow_rp(
-        settings=settings,
-        command_context=_DOWNLOAD)
 
     directory = paconn.operations.download.download(
         powerapps_rp=powerapps_rp,

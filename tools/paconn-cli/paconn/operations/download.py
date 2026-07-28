@@ -9,12 +9,11 @@ Save operation.
 
 import os
 import json
-import requests
 
 from knack.util import CLIError
 from knack.prompting import prompt_y_n
 
-from paconn.common.util import format_json
+from paconn.common.util import download_content, format_json, write_file
 from paconn.settings.util import write_settings, SETTINGS_FILE
 
 from paconn.operations.json_keys import (
@@ -76,6 +75,16 @@ def _ensure_overwrite(settings):
     return overwrite
 
 
+def _download_file(url, filename):
+    """
+    Download the content of an url into a file.
+    """
+    write_file(
+        filename=filename,
+        content=download_content(url),
+        mode='wb')
+
+
 def download(powerapps_rp, settings, destination, overwrite):
     """
     Download operation.
@@ -127,46 +136,35 @@ def download(powerapps_rp, settings, destination, overwrite):
         content=api_properties_selected,
         sort_keys=False)
 
-    open(
-        file=settings.api_properties,
-        mode='w'
-        ).write(api_prop)
+    write_file(
+        filename=settings.api_properties,
+        content=api_prop)
 
     # Write the open api definition,
     # either from swagger URL when available or from swagger property.
     if _API_DEFINITIONS in api_properties and _ORIGINAL_SWAGGER_URL in api_properties[_API_DEFINITIONS]:
-        original_swagger_url = api_properties[_API_DEFINITIONS][_ORIGINAL_SWAGGER_URL]
-        response = requests.get(original_swagger_url, allow_redirects=True)
-        response_string = response.content.decode('utf-8-sig')
+        response_string = download_content(
+            api_properties[_API_DEFINITIONS][_ORIGINAL_SWAGGER_URL]).decode('utf-8-sig')
 
         swagger = format_json(
             content=json.loads(response_string),
             sort_keys=False)
 
-        open(
-            file=settings.api_definition,
-            mode='w'
-            ).write(swagger)
+        write_file(
+            filename=settings.api_definition,
+            content=swagger)
 
     # Write the icon
     if _ICON_URI in api_properties:
-        icon_url = api_properties[_ICON_URI]
-        response = requests.get(icon_url, allow_redirects=True)
-
-        open(
-            file=settings.icon,
-            mode='wb'
-            ).write(response.content)
+        _download_file(
+            url=api_properties[_ICON_URI],
+            filename=settings.icon)
 
     # Write the script
     if _SCRIPT_URI in api_properties:
-        script_url = api_properties[_SCRIPT_URI]
-        response = requests.get(script_url, allow_redirects=True)
-
-        open(
-            file=settings.script,
-            mode='wb'
-            ).write(response.content)
+        _download_file(
+            url=api_properties[_SCRIPT_URI],
+            filename=settings.script)
     else:
         settings.script = None
 

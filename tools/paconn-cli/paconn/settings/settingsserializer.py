@@ -7,8 +7,7 @@
 Represents a settings object consructed from settings.json
 """
 
-import json
-from paconn.common.util import format_json
+from paconn.common.util import format_json, load_json_file, write_file
 from paconn.settings.settings import Settings
 
 # Connector sepecific settings
@@ -56,15 +55,14 @@ class SettingsSerializer:
         Serializes a settings object into the settings.json
         """
         json_str = SettingsSerializer.to_json_string(settings)
-        open(filename, 'w').write(json_str)
+        write_file(filename=filename, content=json_str)
 
     @staticmethod
     def from_json(filename):
         """
         Deserializes a settings object from the settings.json file
         """
-        with open(filename, 'r') as file:
-            settings_dict = json.load(file)  # pylint: disable=attribute-defined-outside-init
+        settings_dict = load_json_file(filename)
         settings = SettingsSerializer.deserialize(settings_dict)
         return settings
 

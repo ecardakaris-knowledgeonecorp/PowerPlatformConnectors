@@ -25,20 +25,29 @@ class PowerAppsRP:
     def _get_filter_query(environment):
         return {'$filter': 'environment eq \'{}\''.format(environment)}
 
+    # pylint: disable=too-many-arguments
+    def _request(self, verb, path, query=None, payload=None, send_rp_headers=True):
+        """
+        Send a request to the given API path.
+        """
+        endpoint = self.api_manager.construct_url(
+            path=path,
+            query=query)
+
+        return self.api_manager.request(
+            verb=verb,
+            endpoint=endpoint,
+            payload=payload,
+            headers=self.rp_headers if send_rp_headers else None)
+
     def get_connector(self, environment, connector_id):
         """
         Returns API registration JSON for a given connector.
         """
-        api = urljoin('apis/', connector_id)
-
-        endpoint = self.api_manager.construct_url(
-            path=api,
-            query=PowerAppsRP._get_filter_query(environment))
-
-        response = self.api_manager.request(
+        response = self._request(
             verb='GET',
-            endpoint=endpoint,
-            headers=self.rp_headers)
+            path=urljoin('apis/', connector_id),
+            query=PowerAppsRP._get_filter_query(environment))
 
         return response.json()
 
@@ -46,15 +55,11 @@ class PowerAppsRP:
         """
         Creates a new custom connector.
         """
-        endpoint = self.api_manager.construct_url(
-            path='apis',
-            query=PowerAppsRP._get_filter_query(environment))
-
-        response = self.api_manager.request(
+        response = self._request(
             verb='POST',
-            endpoint=endpoint,
-            payload=payload,
-            headers=self.rp_headers)
+            path='apis',
+            query=PowerAppsRP._get_filter_query(environment),
+            payload=payload)
 
         return response.text
 
@@ -62,17 +67,11 @@ class PowerAppsRP:
         """
         Updates a custom connector.
         """
-        api = urljoin('apis/', connector_id)
-
-        endpoint = self.api_manager.construct_url(
-            path=api,
-            query=PowerAppsRP._get_filter_query(environment))
-
-        response = self.api_manager.request(
+        response = self._request(
             verb='PATCH',
-            endpoint=endpoint,
-            payload=payload,
-            headers=self.rp_headers)
+            path=urljoin('apis/', connector_id),
+            query=PowerAppsRP._get_filter_query(environment),
+            payload=payload)
 
         return response.text
 
@@ -80,14 +79,10 @@ class PowerAppsRP:
         """
         Returns all connectors.
         """
-        endpoint = self.api_manager.construct_url(
+        response = self._request(
+            verb='GET',
             path='apis',
             query=PowerAppsRP._get_filter_query(environment))
-
-        response = self.api_manager.request(
-            verb='GET',
-            endpoint=endpoint,
-            headers=self.rp_headers)
 
         return response.json()
 
@@ -95,21 +90,15 @@ class PowerAppsRP:
         """
         Validates a custom connector.
         """
-        api = self.api_manager.add_object_id('validateApiSwagger')
-
         query = None
         if enable_certification_rules:
             query = {'enableConnectorCertificationRules': 'true'}
 
-        endpoint = self.api_manager.construct_url(
-            path=api,
-            query=query)
-
-        response = self.api_manager.request(
+        response = self._request(
             verb='POST',
-            endpoint=endpoint,
-            payload=payload,
-            headers=self.rp_headers)
+            path=self.api_manager.add_object_id('validateApiSwagger'),
+            query=query,
+            payload=payload)
 
         return response.text
 
@@ -117,15 +106,10 @@ class PowerAppsRP:
         """
         Generates a resource storage
         """
-        api = self.api_manager.add_object_id('generateResourceStorage')
-
-        endpoint = self.api_manager.construct_url(path=api)
-
-        payload = {'environment': {'name': environment}}
-
-        response = self.api_manager.request(
+        response = self._request(
             verb='POST',
-            endpoint=endpoint,
-            payload=payload)
+            path=self.api_manager.add_object_id('generateResourceStorage'),
+            payload={'environment': {'name': environment}},
+            send_rp_headers=False)
 
         return json.loads(response.text)

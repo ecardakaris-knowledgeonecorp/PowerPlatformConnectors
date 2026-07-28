@@ -14,7 +14,7 @@ import urllib.parse
 
 from knack.util import CLIError
 
-from paconn.common.util import ensure_file_exists
+from paconn.common.util import ensure_file_exists, load_json_file
 from paconn.settings.util import write_settings
 from paconn.apimanager.fileuploader import upload_file
 from paconn.operations.json_keys import (
@@ -65,6 +65,20 @@ def _create_backendservice_url(openapi_definition):
     return url
 
 
+def _add_client_secret(token_property, client_secret, is_update):
+    """
+    Add the OAuth2 client secret to the settings of a token property.
+    """
+    if not token_property:
+        return
+
+    oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
+    if oauth_settings and client_secret:
+        oauth_settings[_CLIENT_SECRET] = client_secret
+    elif oauth_settings and not client_secret and not is_update:
+        raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+
+
 def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings):
     """
     Method for create/update operation
@@ -79,35 +93,27 @@ def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings)
         file_type='API Definition')
 
     # Open the property file
-    with open(settings.api_properties, 'r') as file:
-        property_definition = json.load(file)
+    property_definition = load_json_file(settings.api_properties)
 
     # Get the property object
     properties = property_definition[_PROPERTIES]
 
     # Add secret in connection parameter
-    token_property = properties.get(_CONNECTION_PARAMETERS, {}).get(_TOKEN, None)
-    if token_property:
-        oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
-        if oauth_settings and client_secret:
-            oauth_settings[_CLIENT_SECRET] = client_secret
-        elif oauth_settings and not client_secret and not is_update:
-            raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+    _add_client_secret(
+        token_property=properties.get(_CONNECTION_PARAMETERS, {}).get(_TOKEN, None),
+        client_secret=client_secret,
+        is_update=is_update)
 
     # Add secret in connection parameter set
     multi_auth = properties.get(_CONNECTION_PARAMETER_SET, {}).get(_VALUES, [])
     for auth in multi_auth:
-        token_property = auth.get(_PARAMETERS).get(_TOKEN)
-        if token_property:
-            oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
-            if oauth_settings and client_secret:
-                oauth_settings[_CLIENT_SECRET] = client_secret
-            elif oauth_settings and not client_secret and not is_update:
-                raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+        _add_client_secret(
+            token_property=auth.get(_PARAMETERS).get(_TOKEN),
+            client_secret=client_secret,
+            is_update=is_update)
 
     # Load swagger definition
-    with open(settings.api_definition, 'r') as file:
-        openapi_definition = json.load(file)
+    openapi_definition = load_json_file(settings.api_definition)
 
     # Append swagger
     properties[_OPEN_API_DEFINITION] = openapi_definition
