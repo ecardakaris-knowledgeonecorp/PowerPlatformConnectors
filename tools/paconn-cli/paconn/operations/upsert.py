@@ -14,9 +14,10 @@ import urllib.parse
 
 from knack.util import CLIError
 
-from paconn.common.util import ensure_file_exists
+from paconn.common.util import display, ensure_file_exists, load_json_file
 from paconn.settings.util import write_settings
 from paconn.apimanager.fileuploader import upload_file
+from paconn.operations.validate import format_validation_result
 from paconn.operations.json_keys import (
     _PROPERTIES,
     _ICON_URI,
@@ -65,6 +66,50 @@ def _create_backendservice_url(openapi_definition):
     return url
 
 
+def _add_client_secret(token_property, client_secret, is_update):
+    """
+    Add the OAuth2 client secret to a given token property.
+    """
+    if not token_property:
+        return
+
+    oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
+    if not oauth_settings:
+        return
+
+    if client_secret:
+        oauth_settings[_CLIENT_SECRET] = client_secret
+    elif not is_update:
+        raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+
+
+def _get_required_info_value(info, key, api_definition):
+    """
+    Return a required value from the info section of the Open API definition.
+    """
+    if key not in info:
+        raise CLIError('{key} is not present in the {info} section of the API Definition file {file}.'.format(
+            key=key,
+            info=_INFO,
+            file=api_definition))
+
+    return info[key]
+
+
+def _get_connector_id(api_registration):
+    """
+    Return the connector id from the api registration response.
+    """
+    try:
+        return json.loads(api_registration)[_NAME]
+    except (ValueError, KeyError, TypeError) as exception:
+        raise CLIError(
+            'The connector was created but the service response couldn\'t be parsed, '
+            'so the settings file wasn\'t written. (Inner Error: {error})\n{response}'.format(
+                error=exception,
+                response=api_registration)) from exception
+
+
 def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings):
     """
     Method for create/update operation
@@ -79,35 +124,36 @@ def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings)
         file_type='API Definition')
 
     # Open the property file
-    with open(settings.api_properties, 'r') as file:
-        property_definition = json.load(file)
+    property_definition = load_json_file(
+        filename=settings.api_properties,
+        file_type='API Properties')
 
     # Get the property object
+    if _PROPERTIES not in property_definition:
+        raise CLIError('{} is not present in the API Properties file {}.'.format(
+            _PROPERTIES,
+            settings.api_properties))
+
     properties = property_definition[_PROPERTIES]
 
     # Add secret in connection parameter
-    token_property = properties.get(_CONNECTION_PARAMETERS, {}).get(_TOKEN, None)
-    if token_property:
-        oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
-        if oauth_settings and client_secret:
-            oauth_settings[_CLIENT_SECRET] = client_secret
-        elif oauth_settings and not client_secret and not is_update:
-            raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+    _add_client_secret(
+        token_property=properties.get(_CONNECTION_PARAMETERS, {}).get(_TOKEN, None),
+        client_secret=client_secret,
+        is_update=is_update)
 
     # Add secret in connection parameter set
     multi_auth = properties.get(_CONNECTION_PARAMETER_SET, {}).get(_VALUES, [])
     for auth in multi_auth:
-        token_property = auth.get(_PARAMETERS).get(_TOKEN)
-        if token_property:
-            oauth_settings = token_property.get(_OAUTH_SETTINGS, None)
-            if oauth_settings and client_secret:
-                oauth_settings[_CLIENT_SECRET] = client_secret
-            elif oauth_settings and not client_secret and not is_update:
-                raise CLIError('Please provide OAuth2 client secret using the --secret argument.')
+        _add_client_secret(
+            token_property=auth.get(_PARAMETERS, {}).get(_TOKEN),
+            client_secret=client_secret,
+            is_update=is_update)
 
     # Load swagger definition
-    with open(settings.api_definition, 'r') as file:
-        openapi_definition = json.load(file)
+    openapi_definition = load_json_file(
+        filename=settings.api_definition,
+        file_type='API Definition')
 
     # Append swagger
     properties[_OPEN_API_DEFINITION] = openapi_definition
@@ -119,20 +165,37 @@ def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings)
     # Append the environment id
     properties[_ENVIRONMENT] = {_NAME: settings.environment}
 
+    info = openapi_definition.get(_INFO, {})
+
     # Add displayName only when creating a new connector
     if is_update is not True:
-        properties[_DISPLAY_NAME] = openapi_definition[_INFO][_TITLE]
+        properties[_DISPLAY_NAME] = _get_required_info_value(
+            info=info,
+            key=_TITLE,
+            api_definition=settings.api_definition)
 
     # Add description
-    properties[_DESCRIPTION] = openapi_definition[_INFO][_DESCRIPTION]
+    properties[_DESCRIPTION] = _get_required_info_value(
+        info=info,
+        key=_DESCRIPTION,
+        api_definition=settings.api_definition)
 
     # Validate Open API Definition
-    powerapps_rp.validate_connector(
+    validation_result = powerapps_rp.validate_connector(
         payload=openapi_definition,
         enable_certification_rules=False)
 
+    # Surface any validation message returned by the service
+    validation_message = format_validation_result(validation_result)
+    if validation_message:
+        display(validation_message)
+
     # Get the shared access signature
     response = powerapps_rp.generate_resource_storage(settings.environment)
+
+    if _SHARED_ACCESS_SIGNATURE not in response:
+        raise CLIError('{} is not present in the resource storage response.'.format(_SHARED_ACCESS_SIGNATURE))
+
     sas_url = response[_SHARED_ACCESS_SIGNATURE]
 
     # Upload the icon
@@ -163,7 +226,7 @@ def upsert(powerapps_rp, settings, client_secret, is_update, overwrite_settings)
         api_registration = powerapps_rp.create_connector(
             environment=settings.environment,
             payload=property_definition)
-        connector_id = json.loads(api_registration)[_NAME]
+        connector_id = _get_connector_id(api_registration)
 
         # Save the settings
         settings.connector_id = connector_id

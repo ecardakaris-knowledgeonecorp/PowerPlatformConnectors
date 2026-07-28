@@ -52,27 +52,37 @@ class TokenManager:
         """
         Reads a login token file.
         """
-        creds = []
+        creds = {}
         if os.path.isfile(self.token_file):
             try:
                 with open(self.token_file, 'r') as file:
                     creds = json.load(file)
-            except ValueError as exception:
-                raise CLIError("Failed to load token files. (Inner Error: {})".format(exception))
+            except (ValueError, OSError) as exception:
+                raise CLIError(
+                    "Failed to load token files. (Inner Error: {})".format(exception)) from exception
         return creds
 
     def write(self, credentials):
         """
         Writes the login credentials to a token file.
         """
-        with os.fdopen(os.open(self.token_file, os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o600), 'w+') as cred_file:
-            cred_file.write(json.dumps(credentials))
+        try:
+            os.makedirs(os.path.dirname(self.token_file), exist_ok=True)
+            with os.fdopen(os.open(self.token_file, os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o600), 'w+') as cred_file:
+                cred_file.write(json.dumps(credentials))
+        except OSError as exception:
+            raise CLIError('Failed to save the token file {file}. (Inner Error: {error})'.format(
+                file=self.token_file,
+                error=exception)) from exception
 
     @staticmethod
     def is_expired(credentials):
         """
         Returns true if the token is expired.
         """
+        if not credentials:
+            return True
+
         token_expired = _ACCESS_TOKEN not in credentials
 
         # Check for timeout
@@ -84,4 +94,15 @@ class TokenManager:
         return token_expired
 
     def delete_token_file(self):
-        os.remove(self.token_file)
+        """
+        Deletes the login token file, if it exists.
+        """
+        try:
+            os.remove(self.token_file)
+        except FileNotFoundError:
+            # Not logged in, nothing to remove.
+            pass
+        except OSError as exception:
+            raise CLIError('Failed to remove the token file {file}. (Inner Error: {error})'.format(
+                file=self.token_file,
+                error=exception)) from exception

@@ -9,6 +9,7 @@ Prompts the user for missing arguments
 """
 
 from knack.prompting import prompt_choice_list
+from knack.util import CLIError
 
 _PROPERTIES = 'properties'
 _VALUE = 'value'
@@ -23,13 +24,17 @@ def get_environment(flow_rp):
     Prompt for environment if not provided.
     """
     environments_val = flow_rp.get_environments()
-    environments_list = environments_val[_VALUE]
+    environments_list = environments_val.get(_VALUE, [])
     environments = {
         env[_PROPERTIES][_DISPLAY_NAME]: env[_NAME]
         for env in environments_list
     }
 
     environment_keys = list(environments.keys())
+
+    if not environment_keys:
+        raise CLIError('No environment is available for the logged in user. '
+                       'Please specify an environment using the --env argument.')
 
     sid = prompt_choice_list('Please select an environment:', environment_keys)
     environment = environments[environment_keys[sid]]
@@ -44,7 +49,7 @@ def get_connector_id(powerapps_rp, environment):
     Select connector id if not provided.
     """
     connectors_val = powerapps_rp.get_all_connectors(environment)
-    connectors_list = connectors_val[_VALUE]
+    connectors_list = connectors_val.get(_VALUE, [])
     custom_connectors = filter(lambda conn: conn[_PROPERTIES][_IS_CUSTOM_API], connectors_list)
     connectors = {
         conn[_PROPERTIES][_DISPLAY_NAME] + ' - ' + conn[_PROPERTIES][_CREATED_BY][_DISPLAY_NAME]: conn[_NAME]
@@ -52,6 +57,10 @@ def get_connector_id(powerapps_rp, environment):
     }
 
     connectors_keys = list(connectors.keys())
+
+    if not connectors_keys:
+        raise CLIError('No custom connector is available in the environment {}. '
+                       'Please specify a connector using the --cid argument.'.format(environment))
 
     sid = prompt_choice_list('Please select a connector:', connectors_keys)
     connector_id = connectors[connectors_keys[sid]]
