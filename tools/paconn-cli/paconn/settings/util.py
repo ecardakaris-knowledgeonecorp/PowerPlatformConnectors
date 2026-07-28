@@ -13,6 +13,7 @@ from paconn.authentication.tokenmanager import TokenManager
 from paconn.apimanager.powerappsrpbuilder import PowerAppsRPBuilder
 from paconn.apimanager.flowrpbuilder import FlowRPBuilder
 from paconn.common.prompts import get_environment, get_connector_id
+from paconn.settings.settingsbuilder import SettingsBuilder
 from paconn.settings.settingsserializer import SettingsSerializer
 
 # Setting file name
@@ -72,6 +73,39 @@ def load_powerapps_and_flow_rp(settings, command_context):
             powerapps_rp=powerapps_rp)
 
     return powerapps_rp, flow_rp
+
+
+# pylint: disable=too-many-arguments
+def load_settings_and_powerapps_rp(
+        command_context,
+        settings_file,
+        powerapps_url,
+        powerapps_version,
+        environment=None,
+        connector_id=None,
+        api_properties=None,
+        api_definition=None,
+        icon=None,
+        script=None):
+    """
+    Loads the settings and the powerapps rp for a command.
+    """
+    settings = SettingsBuilder.get_settings(
+        environment=environment,
+        settings_file=settings_file,
+        api_properties=api_properties,
+        api_definition=api_definition,
+        icon=icon,
+        script=script,
+        connector_id=connector_id,
+        powerapps_url=powerapps_url,
+        powerapps_version=powerapps_version)
+
+    powerapps_rp, _ = load_powerapps_and_flow_rp(
+        settings=settings,
+        command_context=command_context)
+
+    return settings, powerapps_rp
 
 
 def write_settings(settings, overwrite):

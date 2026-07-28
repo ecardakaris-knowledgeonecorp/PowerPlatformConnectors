@@ -10,8 +10,7 @@ Validate command.
 from paconn import _VALIDATE
 
 from paconn.common.util import display
-from paconn.settings.util import load_powerapps_and_flow_rp
-from paconn.settings.settingsbuilder import SettingsBuilder
+from paconn.settings.util import load_settings_and_powerapps_rp
 
 import paconn.operations.validate
 
@@ -24,21 +23,13 @@ def validate(
     """
     Validate command.
     """
-    # Get settings
-    settings = SettingsBuilder.get_settings(
-        environment=None,
+    # Get settings and the powerapps rp
+    settings, powerapps_rp = load_settings_and_powerapps_rp(
+        command_context=_VALIDATE,
         settings_file=settings_file,
-        api_properties=None,
         api_definition=api_definition,
-        icon=None,
-        script=None,
-        connector_id=None,
         powerapps_url=powerapps_url,
         powerapps_version=powerapps_version)
-
-    powerapps_rp, _ = load_powerapps_and_flow_rp(
-        settings=settings,
-        command_context=_VALIDATE)
 
     result = paconn.operations.validate.validate(
         powerapps_rp=powerapps_rp,

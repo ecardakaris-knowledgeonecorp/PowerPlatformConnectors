@@ -10,9 +10,8 @@ Create command.
 
 from paconn import _CREATE
 from paconn.common.util import display
-from paconn.settings.util import load_powerapps_and_flow_rp
+from paconn.settings.util import load_settings_and_powerapps_rp
 from paconn.operations.upsert import upsert
-from paconn.settings.settingsbuilder import SettingsBuilder
 
 
 # pylint: disable=too-many-arguments
@@ -30,21 +29,17 @@ def create(
     """
     Create command.
     """
-    # Get settings
-    settings = SettingsBuilder.get_settings(
+    # Get settings and the powerapps rp
+    settings, powerapps_rp = load_settings_and_powerapps_rp(
+        command_context=_CREATE,
         environment=environment,
         settings_file=settings_file,
         api_properties=api_properties,
         api_definition=api_definition,
         icon=icon,
         script=script,
-        connector_id=None,
         powerapps_url=powerapps_url,
         powerapps_version=powerapps_version)
-
-    powerapps_rp, _ = load_powerapps_and_flow_rp(
-        settings=settings,
-        command_context=_CREATE)
 
     connector_id = upsert(
         powerapps_rp=powerapps_rp,

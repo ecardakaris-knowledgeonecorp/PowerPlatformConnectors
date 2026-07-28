@@ -32,3 +32,17 @@ class APIManagerBuilder:
             base_path=base_path,
             api_version=api_version,
             credentials=credentials)
+
+
+# pylint: disable=too-many-arguments
+def build_rp(rp_type, url, base_path, api_version, credentials):
+    """
+    Creates a resource provider object backed by an APIManager for the given URL
+    """
+    api_manager = APIManagerBuilder.get_from_url(
+        url=url,
+        base_path=base_path,
+        api_version=api_version,
+        credentials=credentials)
+
+    return rp_type(api_manager=api_manager)

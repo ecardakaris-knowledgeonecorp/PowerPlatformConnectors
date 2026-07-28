@@ -8,7 +8,7 @@
 A builder class to create a PowerAppsRP object
 """
 
-from paconn.apimanager.apimanagerbuilder import APIManagerBuilder
+from paconn.apimanager.apimanagerbuilder import build_rp
 from paconn.apimanager.powerappsrp import PowerAppsRP
 
 
@@ -22,12 +22,9 @@ class PowerAppsRPBuilder:
         Returns powerapps rp object from a given settings and credentials.
         """
 
-        # Create the API Manager
-        powerapps_api_manager = APIManagerBuilder.get_from_url(
+        return build_rp(
+            rp_type=PowerAppsRP,
             url=settings.powerapps_url,
             base_path=settings.powerapps_base_path,
             api_version=settings.powerapps_api_version,
             credentials=credentials)
-
-        powerapps_rp = PowerAppsRP(api_manager=powerapps_api_manager)
-        return powerapps_rp

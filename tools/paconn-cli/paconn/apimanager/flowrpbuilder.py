@@ -8,7 +8,7 @@
 A builder class to create a PowerAppsRP object
 """
 
-from paconn.apimanager.apimanagerbuilder import APIManagerBuilder
+from paconn.apimanager.apimanagerbuilder import build_rp
 from paconn.apimanager.flowrp import FlowRP
 
 
@@ -22,13 +22,9 @@ class FlowRPBuilder:
         Returns flow rp object from a given settings and credentials.
         """
 
-        # Create the API Manager
-        flow_api_manager = APIManagerBuilder.get_from_url(
+        return build_rp(
+            rp_type=FlowRP,
             url=settings.flow_url,
             base_path=settings.flow_base_path,
             api_version=settings.flow_api_version,
             credentials=credentials)
-
-        flow_rp = FlowRP(api_manager=flow_api_manager)
-
-        return flow_rp

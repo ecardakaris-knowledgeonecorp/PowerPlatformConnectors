@@ -8,10 +8,7 @@
 Method for create/update operation
 """
 
-import io
-import json
-
-from paconn.common.util import ensure_file_exists
+from paconn.common.util import ensure_file_exists, load_json_file
 
 
 def validate(powerapps_rp, settings):
@@ -25,8 +22,7 @@ def validate(powerapps_rp, settings):
         file_type='API Definition')
 
     # Load swagger definition
-    with io.open(settings.api_definition, 'r', encoding='utf-8-sig') as file:
-        openapi_definition = json.load(file)
+    openapi_definition = load_json_file(settings.api_definition)
 
     # Validate Open API Definition
     result = powerapps_rp.validate_connector(
